@@ -1,30 +1,39 @@
+from pathlib import Path
+
 import streamlit as st
 import pandas as pd
 import joblib
 
 st.set_page_config(page_title="Medical Insurance Cost Predictor", page_icon="💊")
 
+# Resolve paths relative to THIS script's location, not the process's working
+# directory — Streamlit Cloud doesn't guarantee the CWD matches the folder
+# app.py lives in, so bare relative filenames like "scaler.pkl" can fail with
+# FileNotFoundError even when the file is sitting right next to app.py.
+APP_DIR = Path(__file__).resolve().parent
+
 
 @st.cache_resource
 def load_artifacts():
     """Load the model + preprocessing objects saved by the training notebook.
 
-    Expects these four files to sit next to app.py:
+    Expects these four files to sit next to app.py (in the SAME folder,
+    e.g. ui_app/ if that's where app.py lives in the repo):
       - model_metadata.pkl   (tells us which file/format the winning model uses)
       - scaler.pkl           (the StandardScaler fit on the TRAINING data)
       - model_columns.pkl    (exact training column order)
       - best_insurance_model.json  OR  best_insurance_model.pkl
     """
-    meta = joblib.load("model_metadata.pkl")
-    scaler = joblib.load("scaler.pkl")
-    columns = joblib.load("model_columns.pkl")
+    meta = joblib.load(APP_DIR / "model_metadata.pkl")
+    scaler = joblib.load(APP_DIR / "scaler.pkl")
+    columns = joblib.load(APP_DIR / "model_columns.pkl")
 
     if meta["is_xgboost"]:
         from xgboost import XGBRegressor
         model = XGBRegressor()
-        model.load_model(meta["model_filename"])
+        model.load_model(str(APP_DIR / meta["model_filename"]))
     else:
-        model = joblib.load(meta["model_filename"])
+        model = joblib.load(APP_DIR / meta["model_filename"])
 
     return model, scaler, columns, meta
 
